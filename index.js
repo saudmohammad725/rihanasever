@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
+import { config } from './config/config.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -10,20 +10,20 @@ import adminRoutes from './routes/admin.js';
 import bookingRoutes from './routes/bookings.js';
 import analyticsRoutes from './routes/analytics.js';
 
-// Load environment variables
-dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = config.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: config.FRONTEND_URL || 'http://localhost:5173',
   credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Serve static files (Admin Panel)
+app.use(express.static('public'));
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -66,15 +66,13 @@ app.use('*', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`
-╔════════════════════════════════════════╗
-║     🌟 Rihana Server Started 🌟      ║
-╠════════════════════════════════════════╣
-║  Port: ${PORT}                           ║
-║  Environment: ${process.env.NODE_ENV}            ║
-║  Time: ${new Date().toLocaleString('ar-SA')}  ║
-╚════════════════════════════════════════╝
-  `);
+  console.log('\n🚀 Rihana Server Started Successfully!\n');
+  console.log('📍 Admin Panel:    http://localhost:' + PORT + '/admin.html');
+  console.log('📍 Backend API:    http://localhost:' + PORT);
+  console.log('📍 API Health:     http://localhost:' + PORT + '/api/health');
+  console.log('📍 Website:        http://localhost:5173');
+  console.log('\n✅ Server is ready!');
+  console.log('💡 Admin Login: admin@rihana.com / Admin@123456\n');
 });
 
 export default app;

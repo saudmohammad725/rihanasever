@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { config } from '../config/config.js';
 
 export const verifyToken = (req, res, next) => {
   try {
@@ -11,7 +12,7 @@ export const verifyToken = (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, config.JWT_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
@@ -33,7 +34,7 @@ export const verifyAdmin = (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, config.JWT_SECRET);
     
     if (!decoded.isAdmin) {
       return res.status(403).json({

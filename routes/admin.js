@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { verifyAdmin } from '../middleware/auth.js';
 import { supabaseAdmin } from '../config/supabase.js';
+import { config } from '../config/config.js';
 
 const router = express.Router();
 
@@ -13,8 +14,8 @@ router.post('/login', async (req, res) => {
 
     // Check default admin credentials
     if (
-      email === process.env.ADMIN_EMAIL &&
-      password === process.env.ADMIN_PASSWORD
+      email === config.ADMIN_EMAIL &&
+      password === config.ADMIN_PASSWORD
     ) {
       // Generate admin token
       const token = jwt.sign(
@@ -23,13 +24,13 @@ router.post('/login', async (req, res) => {
           isAdmin: true,
           role: 'admin'
         },
-        process.env.JWT_SECRET,
+        config.JWT_SECRET,
         { expiresIn: '7d' }
       );
 
       res.cookie('adminToken', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: config.NODE_ENV === 'production',
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       });
 
@@ -76,13 +77,13 @@ router.post('/login', async (req, res) => {
         isAdmin: true,
         role: admin.role || 'admin'
       },
-      process.env.JWT_SECRET,
+      config.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
     res.cookie('adminToken', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: config.NODE_ENV === 'production',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 

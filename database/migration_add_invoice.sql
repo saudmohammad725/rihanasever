@@ -57,11 +57,22 @@ CREATE TRIGGER bookings_set_codes_trigger
   EXECUTE FUNCTION set_booking_codes();
 
 -- 7. تحديث الحجوزات الموجودة بأرقام فاتورة ورموز
-UPDATE bookings 
+-- استخدام CTE لتجنب مشكلة Window Functions في UPDATE
+WITH numbered_bookings AS (
+  SELECT 
+    id,
+    created_at,
+    'INV-' || TO_CHAR(created_at, 'YYYYMMDD') || '-' || LPAD(ROW_NUMBER() OVER (ORDER BY created_at)::TEXT, 6, '0') AS new_invoice_number,
+    'RHN-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT || created_at::TEXT) FROM 1 FOR 12)) AS new_encrypted_code
+  FROM bookings
+  WHERE invoice_number IS NULL
+)
+UPDATE bookings
 SET 
-  invoice_number = 'INV-' || TO_CHAR(created_at, 'YYYYMMDD') || '-' || LPAD(ROW_NUMBER() OVER (ORDER BY created_at)::TEXT, 6, '0'),
-  encrypted_code = 'RHN-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT || created_at::TEXT) FROM 1 FOR 12))
-WHERE invoice_number IS NULL;
+  invoice_number = numbered_bookings.new_invoice_number,
+  encrypted_code = numbered_bookings.new_encrypted_code
+FROM numbered_bookings
+WHERE bookings.id = numbered_bookings.id;
 
 -- 8. Create index for invoice_number
 CREATE INDEX IF NOT EXISTS bookings_invoice_number_idx ON bookings(invoice_number);

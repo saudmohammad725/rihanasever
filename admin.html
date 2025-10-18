@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ريحانة - لوحة التحكم</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        body { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen">
+    <div id="app"></div>
+    
+    <script type="module">
+        import React from 'https://esm.sh/react@18';
+        import ReactDOM from 'https://esm.sh/react-dom@18/client';
+        
+        // Admin Login Component
+        function AdminLogin({ onLogin }) {
+            const [email, setEmail] = React.useState('');
+            const [password, setPassword] = React.useState('');
+            const [error, setError] = React.useState('');
+            const [loading, setLoading] = React.useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setError('');
+
+                try {
+                    const response = await fetch('http://localhost:5000/api/admin/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        localStorage.setItem('adminToken', data.token);
+                        onLogin(data.admin);
+                    } else {
+                        setError(data.message || 'فشل تسجيل الدخول');
+                    }
+                } catch (error) {
+                    setError('حدث خطأ في الاتصال بالسيرفر');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return React.createElement('div', {
+                className: 'min-h-screen flex items-center justify-center px-4',
+                style: { background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)' }
+            },
+                React.createElement('div', { className: 'max-w-md w-full' },
+                    React.createElement('div', { className: 'text-center mb-8' },
+                        React.createElement('div', { 
+                            className: 'w-20 h-20 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-2xl mx-auto mb-4 flex items-center justify-center text-4xl'
+                        }, '🛡️'),
+                        React.createElement('h1', { className: 'text-4xl font-bold text-white mb-2' }, 'لوحة التحكم'),
+                        React.createElement('p', { className: 'text-gray-400' }, 'ريحانة - Admin Panel')
+                    ),
+                    React.createElement('div', { className: 'bg-gray-800 rounded-2xl p-8 border border-gray-700' },
+                        error && React.createElement('div', { 
+                            className: 'mb-4 p-4 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-center'
+                        }, error),
+                        React.createElement('form', { onSubmit: handleSubmit, className: 'space-y-6' },
+                            React.createElement('div', {},
+                                React.createElement('label', { className: 'block text-gray-300 font-semibold mb-2' }, 'البريد الإلكتروني'),
+                                React.createElement('input', {
+                                    type: 'email',
+                                    value: email,
+                                    onChange: (e) => setEmail(e.target.value),
+                                    className: 'w-full px-4 py-3 bg-gray-700 border-2 border-gray-600 rounded-lg focus:border-yellow-500 focus:outline-none text-white',
+                                    placeholder: 'admin@rihana.com',
+                                    required: true
+                                })
+                            ),
+                            React.createElement('div', {},
+                                React.createElement('label', { className: 'block text-gray-300 font-semibold mb-2' }, 'كلمة المرور'),
+                                React.createElement('input', {
+                                    type: 'password',
+                                    value: password,
+                                    onChange: (e) => setPassword(e.target.value),
+                                    className: 'w-full px-4 py-3 bg-gray-700 border-2 border-gray-600 rounded-lg focus:border-yellow-500 focus:outline-none text-white',
+                                    placeholder: '••••••••',
+                                    required: true
+                                })
+                            ),
+                            React.createElement('button', {
+                                type: 'submit',
+                                disabled: loading,
+                                className: 'w-full bg-gradient-to-r from-yellow-500 to-amber-600 text-white py-4 rounded-lg font-bold text-lg hover:shadow-2xl transition-all disabled:opacity-50'
+                            }, loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول')
+                        ),
+                        React.createElement('div', { className: 'mt-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600 text-center' },
+                            React.createElement('p', { className: 'text-gray-400 text-sm mb-2' }, 'البيانات الافتراضية:'),
+                            React.createElement('p', { className: 'text-gray-300 text-sm' }, 'admin@rihana.com'),
+                            React.createElement('p', { className: 'text-gray-300 text-sm' }, 'Admin@123456')
+                        )
+                    )
+                )
+            );
+        }
+
+        // Admin Dashboard Component
+        function AdminDashboard({ admin, onLogout }) {
+            return React.createElement('div', { className: 'min-h-screen bg-gray-900 p-8' },
+                React.createElement('div', { className: 'max-w-7xl mx-auto' },
+                    React.createElement('div', { className: 'flex justify-between items-center mb-8' },
+                        React.createElement('div', {},
+                            React.createElement('h1', { className: 'text-4xl font-bold text-white mb-2' }, '🌟 لوحة التحكم'),
+                            React.createElement('p', { className: 'text-gray-400' }, 'مرحباً، ' + (admin?.email || 'Admin'))
+                        ),
+                        React.createElement('button', {
+                            onClick: onLogout,
+                            className: 'px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-all'
+                        }, '🚪 تسجيل الخروج')
+                    ),
+                    React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-6 mb-8' },
+                        React.createElement('div', { className: 'bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 text-white' },
+                            React.createElement('div', { className: 'text-5xl mb-4' }, '👥'),
+                            React.createElement('h3', { className: 'text-lg font-semibold mb-2' }, 'المستخدمين'),
+                            React.createElement('p', { className: 'text-3xl font-bold' }, '0')
+                        ),
+                        React.createElement('div', { className: 'bg-gradient-to-r from-purple-600 to-purple-700 rounded-2xl p-6 text-white' },
+                            React.createElement('div', { className: 'text-5xl mb-4' }, '📅'),
+                            React.createElement('h3', { className: 'text-lg font-semibold mb-2' }, 'الحجوزات'),
+                            React.createElement('p', { className: 'text-3xl font-bold' }, '0')
+                        ),
+                        React.createElement('div', { className: 'bg-gradient-to-r from-yellow-500 to-amber-600 rounded-2xl p-6 text-white' },
+                            React.createElement('div', { className: 'text-5xl mb-4' }, '💰'),
+                            React.createElement('h3', { className: 'text-lg font-semibold mb-2' }, 'الإيرادات'),
+                            React.createElement('p', { className: 'text-3xl font-bold' }, '0 ر.س')
+                        )
+                    ),
+                    React.createElement('div', { className: 'bg-gray-800 rounded-2xl p-8 border border-gray-700 text-center' },
+                        React.createElement('h2', { className: 'text-2xl font-bold text-white mb-4' }, '🎉 مرحباً بك في لوحة التحكم!'),
+                        React.createElement('p', { className: 'text-gray-400 mb-6' }, 'لوحة التحكم جاهزة للاستخدام'),
+                        React.createElement('div', { className: 'flex gap-4 justify-center flex-wrap' },
+                            React.createElement('a', {
+                                href: 'http://localhost:5000/api/health',
+                                target: '_blank',
+                                className: 'px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-all'
+                            }, '✅ حالة السيرفر'),
+                            React.createElement('a', {
+                                href: 'http://localhost:5173',
+                                target: '_blank',
+                                className: 'px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all'
+                            }, '🌐 الموقع الرئيسي')
+                        )
+                    )
+                )
+            );
+        }
+
+        // Main App Component
+        function App() {
+            const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+            const [admin, setAdmin] = React.useState(null);
+
+            React.useEffect(() => {
+                const token = localStorage.getItem('adminToken');
+                if (token) {
+                    // Verify token
+                    fetch('http://localhost:5000/api/admin/verify', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            setIsLoggedIn(true);
+                            setAdmin(data.admin);
+                        }
+                    })
+                    .catch(() => {});
+                }
+            }, []);
+
+            const handleLogin = (adminData) => {
+                setIsLoggedIn(true);
+                setAdmin(adminData);
+            };
+
+            const handleLogout = () => {
+                localStorage.removeItem('adminToken');
+                setIsLoggedIn(false);
+                setAdmin(null);
+            };
+
+            if (isLoggedIn) {
+                return React.createElement(AdminDashboard, { admin, onLogout: handleLogout });
+            }
+
+            return React.createElement(AdminLogin, { onLogin: handleLogin });
+        }
+
+        // Render
+        const root = ReactDOM.createRoot(document.getElementById('app'));
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>
+

@@ -1,4 +1,9 @@
--- Create users table
+-- ========================================
+-- SETUP COMPLETE - Rihana Database Schema
+-- نسخ هذا الملف بالكامل وتنفيذه في Supabase SQL Editor
+-- ========================================
+
+-- 1. Create users table
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -8,7 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create bookings table
+-- 2. Create bookings table
 CREATE TABLE IF NOT EXISTS bookings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -26,7 +31,10 @@ CREATE TABLE IF NOT EXISTS bookings (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Function to generate invoice number
+-- 3. Create sequence for invoice numbers
+CREATE SEQUENCE IF NOT EXISTS invoice_seq START 1;
+
+-- 4. Function to generate invoice number
 CREATE OR REPLACE FUNCTION generate_invoice_number()
 RETURNS TEXT AS $$
 DECLARE
@@ -37,10 +45,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create sequence for invoice numbers
-CREATE SEQUENCE IF NOT EXISTS invoice_seq START 1;
-
--- Function to generate encrypted code
+-- 5. Function to generate encrypted code
 CREATE OR REPLACE FUNCTION generate_encrypted_code()
 RETURNS TEXT AS $$
 BEGIN
@@ -48,7 +53,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger to auto-generate invoice number and encrypted code
+-- 6. Trigger to auto-generate invoice number and encrypted code
 CREATE OR REPLACE FUNCTION set_booking_codes()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -62,12 +67,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS bookings_set_codes_trigger ON bookings;
+
 CREATE TRIGGER bookings_set_codes_trigger
   BEFORE INSERT ON bookings
   FOR EACH ROW
   EXECUTE FUNCTION set_booking_codes();
 
--- Create admins table
+-- 7. Create admins table
 CREATE TABLE IF NOT EXISTS admins (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
@@ -78,7 +85,7 @@ CREATE TABLE IF NOT EXISTS admins (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create visitors table for tracking
+-- 8. Create visitors table for tracking
 CREATE TABLE IF NOT EXISTS visitors (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   page TEXT NOT NULL,
@@ -87,7 +94,7 @@ CREATE TABLE IF NOT EXISTS visitors (
   visited_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes
+-- 9. Create indexes
 CREATE INDEX IF NOT EXISTS users_email_idx ON users(email);
 CREATE INDEX IF NOT EXISTS bookings_user_id_idx ON bookings(user_id);
 CREATE INDEX IF NOT EXISTS bookings_status_idx ON bookings(status);
@@ -96,13 +103,13 @@ CREATE INDEX IF NOT EXISTS bookings_invoice_number_idx ON bookings(invoice_numbe
 CREATE INDEX IF NOT EXISTS visitors_visited_at_idx ON visitors(visited_at);
 CREATE INDEX IF NOT EXISTS visitors_page_idx ON visitors(page);
 
--- Enable Row Level Security
+-- 10. Enable Row Level Security
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE visitors ENABLE ROW LEVEL SECURITY;
 
--- Create policies for users
+-- 11. Create policies for users
 CREATE POLICY "Enable read access for users" ON users
   FOR SELECT
   USING (true);
@@ -115,7 +122,7 @@ CREATE POLICY "Enable update for users" ON users
   FOR UPDATE
   USING (true);
 
--- Create policies for bookings
+-- 12. Create policies for bookings
 CREATE POLICY "Enable read access for all users" ON bookings
   FOR SELECT
   USING (true);
@@ -128,12 +135,12 @@ CREATE POLICY "Enable update for authenticated users" ON bookings
   FOR UPDATE
   USING (true);
 
--- Create policies for admins (only service role can access)
+-- 13. Create policies for admins (only service role can access)
 CREATE POLICY "Enable read access for admins only" ON admins
   FOR SELECT
   USING (true);
 
--- Create policies for visitors (allow insert for tracking)
+-- 14. Create policies for visitors (allow insert for tracking)
 CREATE POLICY "Enable insert for visitors" ON visitors
   FOR INSERT
   WITH CHECK (true);
@@ -142,7 +149,7 @@ CREATE POLICY "Enable read for admins" ON visitors
   FOR SELECT
   USING (true);
 
--- Create updated_at trigger function
+-- 15. Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -151,13 +158,50 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Create triggers
-CREATE TRIGGER update_bookings_updated_at BEFORE UPDATE ON bookings
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- 16. Create triggers for updated_at
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at 
+  BEFORE UPDATE ON users
+  FOR EACH ROW 
+  EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_admins_updated_at BEFORE UPDATE ON admins
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_bookings_updated_at ON bookings;
+CREATE TRIGGER update_bookings_updated_at 
+  BEFORE UPDATE ON bookings
+  FOR EACH ROW 
+  EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_admins_updated_at ON admins;
+CREATE TRIGGER update_admins_updated_at 
+  BEFORE UPDATE ON admins
+  FOR EACH ROW 
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- 17. تحديث الحجوزات الموجودة (إن وجدت) بأرقام فاتورة ورموز
+-- يمكن تخطي هذا إذا كانت قاعدة البيانات جديدة
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM bookings WHERE invoice_number IS NULL LIMIT 1) THEN
+    WITH numbered_bookings AS (
+      SELECT 
+        id,
+        created_at,
+        'INV-' || TO_CHAR(created_at, 'YYYYMMDD') || '-' || LPAD(ROW_NUMBER() OVER (ORDER BY created_at)::TEXT, 6, '0') AS new_invoice_number,
+        'RHN-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT || created_at::TEXT) FROM 1 FOR 12)) AS new_encrypted_code
+      FROM bookings
+      WHERE invoice_number IS NULL
+    )
+    UPDATE bookings
+    SET 
+      invoice_number = numbered_bookings.new_invoice_number,
+      encrypted_code = numbered_bookings.new_encrypted_code
+    FROM numbered_bookings
+    WHERE bookings.id = numbered_bookings.id;
+  END IF;
+END $$;
+
+-- ========================================
+-- تم بنجاح! ✅
+-- الآن قاعدة البيانات جاهزة للاستخدام
+-- ========================================
 
