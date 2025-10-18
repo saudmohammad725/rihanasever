@@ -38,6 +38,11 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
+// Root path - redirect to admin panel
+app.get('/', (req, res) => {
+  res.redirect('/admin.html');
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({
@@ -56,11 +61,11 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
+// 404 handler - only for API routes
+app.use('/api/*', (req, res) => {
   res.status(404).json({
     error: true,
-    message: 'Route not found'
+    message: 'API route not found'
   });
 });
 
